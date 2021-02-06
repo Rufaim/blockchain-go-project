@@ -1,0 +1,20 @@
+syntax="proto3";
+
+option go_package = "message";
+
+package message;
+
+message Void {}
+
+message Transaction {
+    bytes id = 1;
+	bytes data = 2;
+}
+
+message Block {
+    int64 timestamp = 1;
+    bytes prevHash = 2;
+    bytes hash = 3;
+    uint64 nonce = 4;
+    repeated Transaction transactions = 5;
+}
