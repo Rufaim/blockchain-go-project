@@ -10,19 +10,12 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-// type block struct {
-// 	Timestamp    int64
-// 	Transactions []*pb.Transaction
-// 	PrevHash     []byte
-// 	Hash         []byte
-// 	Nonce        uint
-// }
-
 type block struct {
 	pb.Block
 }
 
 func (b *block) setHash() {
+	//TODO: make mining more explicit
 	var hashInt big.Int
 	var hash [sha256.Size]byte
 

@@ -6,9 +6,21 @@ package message;
 
 message Void {}
 
+message TXInput {
+    bytes id = 1;
+    int32 outId = 2;
+    string pubKey = 3;
+}
+
+message TXOutput {
+    int32 amount = 1;
+    string pubKey = 2;
+}
+
 message Transaction {
     bytes id = 1;
-	bytes data = 2;
+    repeated TXInput inps = 2;
+    repeated TXOutput outs = 3;
 }
 
 message Block {

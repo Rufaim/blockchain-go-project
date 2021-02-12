@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"encoding/hex"
 	"time"
 
 	pb "github.com/Rufaim/blockchain/message"
@@ -61,7 +62,7 @@ func NewBlockchain(dbpath string) (*Blockchain, error) {
 		}
 
 		bucket, err := tx.CreateBucket([]byte(blocksBucketName))
-		cbtx := NewTransaction([]byte(genesisCoinbaseData))
+		cbtx := NewCoinbaseTX(genesisCoinbaseData)
 		top := newGenesisBlock(cbtx)
 		repr, err := top.Serialize()
 		if err != nil {
@@ -90,4 +91,86 @@ func (bc *Blockchain) Iterator() *BlockchainIterator {
 		currentHash: bc.currentTop.Hash,
 		db:          bc.db,
 	}
+}
+
+//FindUnspentTransactions returns a set of transaction that have not been closed.
+func (bc *Blockchain) FindUnspentTransactions(pubKey string) ([]*pb.Transaction, error) {
+	var unspentTXs []*pb.Transaction
+	spentTXOs := make(map[string][]int)
+	bci := bc.Iterator()
+
+	for {
+		block, err := bci.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, tx := range block.Transactions {
+			txID := hex.EncodeToString(tx.Id)
+
+		Outputs:
+			for outIdx, out := range tx.Outs {
+				// If output is not spent ...
+				if spentTXOs[txID] != nil {
+					for _, spentOut := range spentTXOs[txID] {
+						if spentOut == outIdx {
+							continue Outputs
+						}
+					}
+				}
+				// and if it is target output ...
+				if outputIsLockedWithKey(out, pubKey) {
+					// we take it into account
+					unspentTXs = append(unspentTXs, tx)
+				}
+			}
+
+			if !isTransactionCoinbase(tx) {
+				for _, in := range tx.Inps {
+					if inputUsesKey(in, pubKey) {
+						// remember, id of the input is an id of transaction whose output it closes
+						inTxID := hex.EncodeToString(in.Id)
+						spentTXOs[inTxID] = append(spentTXOs[inTxID], int(in.OutId))
+					}
+				}
+			}
+		}
+
+		if block.IsGenesis() {
+			break
+		}
+	}
+
+	return unspentTXs, nil
+}
+
+//FindSpendableAmountAndOutputs returns a set of unfinished transaction outputs
+// with a sum more than provided amount. if amount of less then zero provided, than
+// total sum of all unspent transactions returened
+func (bc *Blockchain) FindSpendableAmountAndOutputs(pubKey string, amount int) (int, map[string][]int, error) {
+	unspentOutputs := make(map[string][]int)
+	transactionBalance := 0
+	unspentTransactions, err := bc.FindUnspentTransactions(pubKey)
+
+	if err != nil {
+		return transactionBalance, unspentOutputs, err
+	}
+
+	for _, tx := range unspentTransactions {
+		txID := hex.EncodeToString(tx.Id)
+
+		for outIdx, out := range tx.Outs {
+			if transactionBalance >= amount && amount >= 0 {
+				return transactionBalance, unspentOutputs, nil
+			}
+			if outputIsLockedWithKey(out, pubKey) {
+				transactionBalance += int(out.Amount)
+				if amount > 0 {
+					unspentOutputs[txID] = append(unspentOutputs[txID], outIdx)
+				}
+			}
+		}
+	}
+
+	return transactionBalance, unspentOutputs, nil
 }

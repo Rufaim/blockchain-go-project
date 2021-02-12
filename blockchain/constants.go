@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"crypto/sha256"
+	"errors"
 	"math/big"
 )
 
@@ -22,4 +23,6 @@ const (
 	genesisCoinbaseData = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks"
 )
 
-const miningSubsidy = 10
+const InitialMiningSubsidy = 10
+
+var ErrorNotEnoughBalance = errors.New("Not enougth balance for transaction")
