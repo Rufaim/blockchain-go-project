@@ -6,11 +6,11 @@ import (
 	pb "github.com/Rufaim/blockchain/message"
 )
 
-func inputUsesKey(input *pb.TXInput, pubKey string) bool {
+func InputUsesKey(input *pb.TXInput, pubKey string) bool {
 	return strings.Compare(input.PubKey, pubKey) == 0
 }
 
-func outputIsLockedWithKey(output *pb.TXOutput, pubKey string) bool {
+func OutputIsLockedWithKey(output *pb.TXOutput, pubKey string) bool {
 	return strings.Compare(output.PubKey, pubKey) == 0
 }
 

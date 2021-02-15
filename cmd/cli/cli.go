@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/Rufaim/blockchain/blockchain"
-	pb "github.com/Rufaim/blockchain/message"
 )
 
 type CLIAppplication struct{}
@@ -38,8 +37,10 @@ func (cli *CLIAppplication) Run() {
 	switch os.Args[1] {
 	case showBlockchainCommand:
 		cli.showCommand()
-	case addDataCommand:
-		cli.addDataCommand()
+	case balanceOfWalletCommand:
+		cli.balanceOfWalletCommand()
+	case sendCoinsCommand:
+		cli.sendCoinsCommand()
 	case createBlockchainCommand:
 		cli.createCommand()
 	case deleteBlockchainCommand:
@@ -70,28 +71,86 @@ func (cli *CLIAppplication) showCommand() {
 	cli.printChain("", *showBlockchainDBAddress)
 }
 
-func (cli *CLIAppplication) addDataCommand() {
-	addDataFS := flag.NewFlagSet(addDataCommand, flag.ExitOnError)
-	addDataFSData := addDataFS.String(addDataCommandDataFlag, "", "data to add into a blockchain")
-	addDataFSDBAddress := addDataFS.String(DBAddressFlag, defaultDbPath, "provides path to a specific blockchain db")
+func (cli *CLIAppplication) balanceOfWalletCommand() {
+	balanceOfWalletFS := flag.NewFlagSet(balanceOfWalletCommand, flag.ExitOnError)
+	balanceOfWalletFSOF := balanceOfWalletFS.String(balanceOfWalletCommandOFFlag, "", "username to calculate balance")
+	balanceOfWalletFSDBAddress := balanceOfWalletFS.String(DBAddressFlag, defaultDbPath, "provides path to a specific blockchain db")
 
-	err := addDataFS.Parse(os.Args[2:])
+	err := balanceOfWalletFS.Parse(os.Args[2:])
 	if err != nil {
 		cli.printUsage()
 		panic(err)
 	}
-	if len(*addDataFSData) == 0 {
-		fmt.Printf("Data is not entered")
+	if !checkIsDB(*balanceOfWalletFSDBAddress) {
+		fmt.Printf("%s is not a valid database\n", *balanceOfWalletFSDBAddress)
+		return
+	}
+	if checkFileExists(*balanceOfWalletFSDBAddress) {
+		fmt.Printf("Database %s is exist\n", *balanceOfWalletFSDBAddress)
+		return
+	}
+	if len(*balanceOfWalletFSOF) == 0 {
+		fmt.Printf("Username is not entered")
 		return
 	}
 
-	bc, err := blockchain.NewBlockchain(*addDataFSDBAddress)
+	bc, err := blockchain.NewBlockchain(*balanceOfWalletFSDBAddress)
 	panicOnError(err)
 
-	tx := blockchain.NewTransaction([]byte(*addDataFSData))
-	hash, err := bc.MineBlock([]*pb.Transaction{tx})
+	txs, err := bc.FindUnspentTransactions(*balanceOfWalletFSOF)
 	panicOnError(err)
-	fmt.Printf("Data added!\nHASH: %x\n", hash)
+
+	balance := 0
+
+	for _, tx := range txs {
+		for _, txout := range tx.Outs {
+			if blockchain.OutputIsLockedWithKey(txout, *balanceOfWalletFSOF) {
+				balance += int(txout.Amount)
+			}
+		}
+	}
+	fmt.Printf("Balance for %s is %d\n", *balanceOfWalletFSOF, balance)
+}
+
+func (cli *CLIAppplication) sendCoinsCommand() {
+	sendCoinsCommandFS := flag.NewFlagSet(sendCoinsCommand, flag.ExitOnError)
+	sendCoinsCommandFSFromFlag := sendCoinsCommandFS.String(sendCoinsCommandFromFlag, "", "username for coin sender")
+	sendCoinsCommandFSToFlag := sendCoinsCommandFS.String(sendCoinsCommandToFlag, "", "username for coin receiver")
+	sendCoinsCommandFSAmountFlag := sendCoinsCommandFS.Int(sendCoinsCommandAmountFlag, -1, "amount of coins")
+	sendCoinsCommandFSDBAddress := sendCoinsCommandFS.String(DBAddressFlag, defaultDbPath, "provides path to a specific blockchain db")
+
+	err := sendCoinsCommandFS.Parse(os.Args[2:])
+	if err != nil {
+		cli.printUsage()
+		panic(err)
+	}
+	if !checkIsDB(*sendCoinsCommandFSDBAddress) {
+		fmt.Printf("%s is not a valid database\n", *sendCoinsCommandFSDBAddress)
+		return
+	}
+	if checkFileExists(*sendCoinsCommandFSDBAddress) {
+		fmt.Printf("Database %s is exist\n", *sendCoinsCommandFSDBAddress)
+		return
+	}
+	if len(*sendCoinsCommandFSFromFlag) == 0 {
+		fmt.Printf("Sender username is not entered")
+		return
+	}
+	if len(*sendCoinsCommandFSToFlag) == 0 {
+		fmt.Printf("Receiver username is not entered")
+		return
+	}
+	if *sendCoinsCommandFSAmountFlag < 0 {
+		fmt.Printf("Receiver username is not entered")
+		return
+	}
+
+	bc, err := blockchain.NewBlockchain(*sendCoinsCommandFSDBAddress)
+	panicOnError(err)
+
+	tx, err := blockchain.NewTransaction(*sendCoinsCommandFSFromFlag, *sendCoinsCommandFSToFlag, *sendCoinsCommandFSAmountFlag, bc)
+	_ = tx
+	//TODO: send coins implementation
 }
 
 func (cli *CLIAppplication) createCommand() {

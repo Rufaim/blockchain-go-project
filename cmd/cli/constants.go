@@ -10,10 +10,18 @@ const (
 	showBlockchainCommand = "show"
 )
 
-//// add data commnd
+//// balance command
 const (
-	addDataCommand         = "add"
-	addDataCommandDataFlag = "data"
+	balanceOfWalletCommand       = "balance"
+	balanceOfWalletCommandOFFlag = "of"
+)
+
+//// send command
+const (
+	sendCoinsCommand           = "send"
+	sendCoinsCommandFromFlag   = "from"
+	sendCoinsCommandToFlag     = "to"
+	sendCoinsCommandAmountFlag = "amount"
 )
 
 //// create command

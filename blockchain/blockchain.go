@@ -119,7 +119,7 @@ func (bc *Blockchain) FindUnspentTransactions(pubKey string) ([]*pb.Transaction,
 					}
 				}
 				// and if it is target output ...
-				if outputIsLockedWithKey(out, pubKey) {
+				if OutputIsLockedWithKey(out, pubKey) {
 					// we take it into account
 					unspentTXs = append(unspentTXs, tx)
 				}
@@ -127,7 +127,7 @@ func (bc *Blockchain) FindUnspentTransactions(pubKey string) ([]*pb.Transaction,
 
 			if !isTransactionCoinbase(tx) {
 				for _, in := range tx.Inps {
-					if inputUsesKey(in, pubKey) {
+					if InputUsesKey(in, pubKey) {
 						// remember, id of the input is an id of transaction whose output it closes
 						inTxID := hex.EncodeToString(in.Id)
 						spentTXOs[inTxID] = append(spentTXOs[inTxID], int(in.OutId))
@@ -163,7 +163,7 @@ func (bc *Blockchain) FindSpendableAmountAndOutputs(pubKey string, amount int) (
 			if transactionBalance >= amount && amount >= 0 {
 				return transactionBalance, unspentOutputs, nil
 			}
-			if outputIsLockedWithKey(out, pubKey) {
+			if OutputIsLockedWithKey(out, pubKey) {
 				transactionBalance += int(out.Amount)
 				if amount > 0 {
 					unspentOutputs[txID] = append(unspentOutputs[txID], outIdx)
