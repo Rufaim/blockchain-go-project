@@ -9,7 +9,7 @@ import (
 func Base58Encode(input []byte) []byte {
 	var result strings.Builder
 
-	x := big.NewInt(0).SetBytes(input)
+	x := new(big.Int).SetBytes(input)
 	mod := &big.Int{}
 
 	for x.Cmp(zeroBig) != 0 {

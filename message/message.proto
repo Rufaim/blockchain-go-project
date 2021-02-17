@@ -30,3 +30,26 @@ message Block {
     uint64 nonce = 4;
     repeated Transaction transactions = 5;
 }
+
+message Wallet {
+    message PrivateKey {
+        message CurveParams {
+            bytes P = 1;
+            bytes N = 2;
+            bytes B = 3;
+            bytes Gx = 4;
+            bytes Gy = 5;
+            int32 BitSize = 6;
+        }
+        CurveParams curve = 1;
+        bytes X = 2;
+        bytes Y = 3;
+        bytes D = 4; 
+    }
+    PrivateKey privateKey = 1;
+    bytes publicKey = 2;
+}
+
+message WalletSet {
+    map<string, Wallet> set = 1;
+}
