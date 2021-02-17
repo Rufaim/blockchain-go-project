@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Rufaim/blockchain/blockchain"
+	pb "github.com/Rufaim/blockchain/message"
 )
 
 type CLIAppplication struct{}
@@ -85,8 +86,8 @@ func (cli *CLIAppplication) balanceOfWalletCommand() {
 		fmt.Printf("%s is not a valid database\n", *balanceOfWalletFSDBAddress)
 		return
 	}
-	if checkFileExists(*balanceOfWalletFSDBAddress) {
-		fmt.Printf("Database %s is exist\n", *balanceOfWalletFSDBAddress)
+	if !checkFileExists(*balanceOfWalletFSDBAddress) {
+		fmt.Printf("Database %s does not exist\n", *balanceOfWalletFSDBAddress)
 		return
 	}
 	if len(*balanceOfWalletFSOF) == 0 {
@@ -96,6 +97,7 @@ func (cli *CLIAppplication) balanceOfWalletCommand() {
 
 	bc, err := blockchain.NewBlockchain(*balanceOfWalletFSDBAddress)
 	panicOnError(err)
+	defer bc.Finalize()
 
 	txs, err := bc.FindUnspentTransactions(*balanceOfWalletFSOF)
 	panicOnError(err)
@@ -128,8 +130,8 @@ func (cli *CLIAppplication) sendCoinsCommand() {
 		fmt.Printf("%s is not a valid database\n", *sendCoinsCommandFSDBAddress)
 		return
 	}
-	if checkFileExists(*sendCoinsCommandFSDBAddress) {
-		fmt.Printf("Database %s is exist\n", *sendCoinsCommandFSDBAddress)
+	if !checkFileExists(*sendCoinsCommandFSDBAddress) {
+		fmt.Printf("Database %s does not exist\n", *sendCoinsCommandFSDBAddress)
 		return
 	}
 	if len(*sendCoinsCommandFSFromFlag) == 0 {
@@ -147,10 +149,13 @@ func (cli *CLIAppplication) sendCoinsCommand() {
 
 	bc, err := blockchain.NewBlockchain(*sendCoinsCommandFSDBAddress)
 	panicOnError(err)
+	defer bc.Finalize()
 
 	tx, err := blockchain.NewTransaction(*sendCoinsCommandFSFromFlag, *sendCoinsCommandFSToFlag, *sendCoinsCommandFSAmountFlag, bc)
-	_ = tx
-	//TODO: send coins implementation
+	panicOnError(err)
+	hash, err := bc.MineBlock([]*pb.Transaction{tx})
+	panicOnError(err)
+	fmt.Printf("Block mined, hash: %x", hash)
 }
 
 func (cli *CLIAppplication) createCommand() {
@@ -167,10 +172,6 @@ func (cli *CLIAppplication) createCommand() {
 		fmt.Printf("%s is not a valid database\n", *createBlockchainDBAddress)
 		return
 	}
-	if checkFileExists(*createBlockchainDBAddress) {
-		fmt.Printf("Database %s is exist\n", *createBlockchainDBAddress)
-		return
-	}
 
 	if checkFileExists(*createBlockchainDBAddress) {
 		if *createBlockchainFSForceRecreateFlag {
@@ -182,8 +183,10 @@ func (cli *CLIAppplication) createCommand() {
 			fmt.Printf("Database %s is exist\n", *createBlockchainDBAddress)
 		}
 	}
+
 	bc, err := blockchain.NewBlockchain(*createBlockchainDBAddress)
 	panicOnError(err)
+	defer bc.Finalize()
 
 	bc.Flush()
 }

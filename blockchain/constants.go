@@ -7,7 +7,7 @@ import (
 )
 
 //// Proof of Work constants
-const hashTargetBits = 24 //remember <target> = <desired amount of zeros in hash> * 4
+const hashTargetBits = 16 //remember <target> = <desired amount of zeros in hash> * 4
 
 var hashTargetValue *big.Int
 

@@ -86,6 +86,10 @@ func (bc *Blockchain) Flush() error {
 	return bc.db.Sync()
 }
 
+func (bc *Blockchain) Finalize() error {
+	return bc.db.Close()
+}
+
 func (bc *Blockchain) Iterator() *BlockchainIterator {
 	return &BlockchainIterator{
 		currentHash: bc.currentTop.Hash,

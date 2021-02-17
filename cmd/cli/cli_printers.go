@@ -23,9 +23,9 @@ func (*CLIAppplication) printUsage() {
 
 func (*CLIAppplication) printChain(address, dbPath string) {
 	bc, err := blockchain.NewBlockchain(dbPath)
-	if err != nil {
-		panic(err)
-	}
+	panicOnError(err)
+	defer bc.Finalize()
+
 	bci := bc.Iterator()
 
 	for {
