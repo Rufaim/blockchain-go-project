@@ -1,7 +1,8 @@
 # protobuf
 *.pb.go
 
-# database
+# databases
+*.ws
 *.db
 
 # vscode files
