@@ -7,6 +7,7 @@ import (
 
 	"github.com/Rufaim/blockchain/blockchain"
 	pb "github.com/Rufaim/blockchain/message"
+	"github.com/Rufaim/blockchain/wallet"
 )
 
 type CLIAppplication struct{}
@@ -38,6 +39,8 @@ func (cli *CLIAppplication) Run() {
 	switch os.Args[1] {
 	case showBlockchainCommand:
 		cli.showCommand()
+	case walletOperationsCommand:
+		cli.walletOperationsCommand()
 	case balanceOfWalletCommand:
 		cli.balanceOfWalletCommand()
 	case sendCoinsCommand:
@@ -61,7 +64,7 @@ func (cli *CLIAppplication) showCommand() {
 		cli.printUsage()
 		panic(err)
 	}
-	if !checkIsDB(*showBlockchainDBAddress) {
+	if !checkIsExt(*showBlockchainDBAddress, ".db") {
 		fmt.Printf("%s is not a valid database\n", *showBlockchainDBAddress)
 		return
 	}
@@ -70,6 +73,43 @@ func (cli *CLIAppplication) showCommand() {
 		return
 	}
 	cli.printChain("", *showBlockchainDBAddress)
+}
+
+func (cli *CLIAppplication) walletOperationsCommand() {
+	walletOperationsFS := flag.NewFlagSet(balanceOfWalletCommand, flag.ExitOnError)
+	walletOperationsFSNew := walletOperationsFS.Bool(walletOperationsCommandNewFlag, false, "flag to create new wallet and print its value")
+	walletOperationsFSWSAddress := walletOperationsFS.String(WSAddressFlag, defaultWalletSetPath, "provides path to a specific wallet_set.ws")
+
+	err := walletOperationsFS.Parse(os.Args[2:])
+	if err != nil {
+		cli.printUsage()
+		panic(err)
+	}
+	if !checkIsExt(*walletOperationsFSWSAddress, ".ws") {
+		fmt.Printf("%s is not a valid wallet set\n", *walletOperationsFSWSAddress)
+		return
+	}
+
+	ws := wallet.NewWalletSet()
+	if checkFileExists(*walletOperationsFSWSAddress) {
+		ws.LoadFromFile(*walletOperationsFSWSAddress)
+		panicOnError(err)
+	} else if !*walletOperationsFSNew {
+		fmt.Printf("Wallet set %s does not exist\n", *walletOperationsFSWSAddress)
+		return
+	}
+
+	if *walletOperationsFSNew {
+		address, err := ws.CreateWallet()
+		panicOnError(err)
+		fmt.Printf("New address: %s\n", address)
+		ws.SaveToFile(*walletOperationsFSWSAddress)
+		return
+	}
+
+	for _, address := range ws.GetAllAddresses() {
+		fmt.Println(address)
+	}
 }
 
 func (cli *CLIAppplication) balanceOfWalletCommand() {
@@ -82,7 +122,7 @@ func (cli *CLIAppplication) balanceOfWalletCommand() {
 		cli.printUsage()
 		panic(err)
 	}
-	if !checkIsDB(*balanceOfWalletFSDBAddress) {
+	if !checkIsExt(*balanceOfWalletFSDBAddress, ".db") {
 		fmt.Printf("%s is not a valid database\n", *balanceOfWalletFSDBAddress)
 		return
 	}
@@ -95,18 +135,18 @@ func (cli *CLIAppplication) balanceOfWalletCommand() {
 		return
 	}
 
-	bc, err := blockchain.NewBlockchain(*balanceOfWalletFSDBAddress)
+	bc, err := blockchain.NewBlockchain(*balanceOfWalletFSDBAddress, []byte{})
 	panicOnError(err)
 	defer bc.Finalize()
 
-	txs, err := bc.FindUnspentTransactions(*balanceOfWalletFSOF)
+	txs, err := bc.FindUnspentTransactions([]byte(*balanceOfWalletFSOF))
 	panicOnError(err)
 
 	balance := 0
-
+	wi := wallet.GetAddressInfo([]byte(*balanceOfWalletFSOF))
 	for _, tx := range txs {
 		for _, txout := range tx.Outs {
-			if blockchain.OutputIsLockedWithKey(txout, *balanceOfWalletFSOF) {
+			if blockchain.OutputIsLockedWithKey(txout, wi.PublicKeyHash) {
 				balance += int(txout.Amount)
 			}
 		}
@@ -119,6 +159,7 @@ func (cli *CLIAppplication) sendCoinsCommand() {
 	sendCoinsCommandFSFromFlag := sendCoinsCommandFS.String(sendCoinsCommandFromFlag, "", "username for coin sender")
 	sendCoinsCommandFSToFlag := sendCoinsCommandFS.String(sendCoinsCommandToFlag, "", "username for coin receiver")
 	sendCoinsCommandFSAmountFlag := sendCoinsCommandFS.Int(sendCoinsCommandAmountFlag, -1, "amount of coins")
+	sendCoinsCommandFSWSAddress := sendCoinsCommandFS.String(WSAddressFlag, defaultWalletSetPath, "provides path to a specific wallet set file")
 	sendCoinsCommandFSDBAddress := sendCoinsCommandFS.String(DBAddressFlag, defaultDbPath, "provides path to a specific blockchain db")
 
 	err := sendCoinsCommandFS.Parse(os.Args[2:])
@@ -126,7 +167,7 @@ func (cli *CLIAppplication) sendCoinsCommand() {
 		cli.printUsage()
 		panic(err)
 	}
-	if !checkIsDB(*sendCoinsCommandFSDBAddress) {
+	if !checkIsExt(*sendCoinsCommandFSDBAddress, ".db") {
 		fmt.Printf("%s is not a valid database\n", *sendCoinsCommandFSDBAddress)
 		return
 	}
@@ -134,32 +175,54 @@ func (cli *CLIAppplication) sendCoinsCommand() {
 		fmt.Printf("Database %s does not exist\n", *sendCoinsCommandFSDBAddress)
 		return
 	}
+	if !checkIsExt(*sendCoinsCommandFSWSAddress, ".ws") {
+		fmt.Printf("%s is not a valid wallet set\n", *sendCoinsCommandFSWSAddress)
+		return
+	}
+	if !checkFileExists(*sendCoinsCommandFSWSAddress) {
+		fmt.Printf("Wallet set %s does not exist\n", *sendCoinsCommandFSWSAddress)
+		return
+	}
+
+	ws := wallet.NewWalletSet()
+	panicOnError(ws.LoadFromFile(*sendCoinsCommandFSWSAddress))
+
 	if len(*sendCoinsCommandFSFromFlag) == 0 {
-		fmt.Printf("Sender username is not entered")
+		fmt.Printf("Sender address is not entered")
+		return
+	}
+	if !checkWalletAddress(*sendCoinsCommandFSFromFlag) {
+		fmt.Println("Address %s is not valid", *sendCoinsCommandFSFromFlag)
 		return
 	}
 	if len(*sendCoinsCommandFSToFlag) == 0 {
-		fmt.Printf("Receiver username is not entered")
+		fmt.Printf("Receiver address is not entered\n")
+		return
+	}
+	if !checkWalletAddress(*sendCoinsCommandFSToFlag) {
+		fmt.Println("Address %s is not valid", *sendCoinsCommandFSToFlag)
 		return
 	}
 	if *sendCoinsCommandFSAmountFlag < 0 {
-		fmt.Printf("Receiver username is not entered")
+		fmt.Println("Amount of coins is not valid")
 		return
 	}
 
-	bc, err := blockchain.NewBlockchain(*sendCoinsCommandFSDBAddress)
+	bc, err := blockchain.NewBlockchain(*sendCoinsCommandFSDBAddress, []byte{})
 	panicOnError(err)
 	defer bc.Finalize()
 
-	tx, err := blockchain.NewTransaction(*sendCoinsCommandFSFromFlag, *sendCoinsCommandFSToFlag, *sendCoinsCommandFSAmountFlag, bc)
+	tx, err := blockchain.NewTransaction([]byte(*sendCoinsCommandFSFromFlag),
+		[]byte(*sendCoinsCommandFSToFlag), *sendCoinsCommandFSAmountFlag, bc, ws)
 	panicOnError(err)
 	hash, err := bc.MineBlock([]*pb.Transaction{tx})
 	panicOnError(err)
-	fmt.Printf("Block mined, hash: %x", hash)
+	fmt.Printf("Block mined, hash: %x\n", hash)
 }
 
 func (cli *CLIAppplication) createCommand() {
 	createBlockchainFS := flag.NewFlagSet(createBlockchainCommand, flag.ExitOnError)
+	createBlockchainFSAddressFlag := createBlockchainFS.String(createBlockchainCommandAddressFlag, "", "address of the blockchain founder")
 	createBlockchainFSForceRecreateFlag := createBlockchainFS.Bool(createBlockchainCommandForceRecreateFlag, false, "force recreation of database base")
 	createBlockchainDBAddress := createBlockchainFS.String(DBAddressFlag, defaultDbPath, "provides path to a specific blockchain db")
 
@@ -168,11 +231,10 @@ func (cli *CLIAppplication) createCommand() {
 		cli.printUsage()
 		panic(err)
 	}
-	if !checkIsDB(*createBlockchainDBAddress) {
+	if !checkIsExt(*createBlockchainDBAddress, ".db") {
 		fmt.Printf("%s is not a valid database\n", *createBlockchainDBAddress)
 		return
 	}
-
 	if checkFileExists(*createBlockchainDBAddress) {
 		if *createBlockchainFSForceRecreateFlag {
 			if !removeDBFile(*createBlockchainDBAddress) {
@@ -183,8 +245,16 @@ func (cli *CLIAppplication) createCommand() {
 			fmt.Printf("Database %s is exist\n", *createBlockchainDBAddress)
 		}
 	}
+	if len(*createBlockchainFSAddressFlag) == 0 {
+		fmt.Println("Founder address should not be empty")
+		return
+	}
+	if !checkWalletAddress(*createBlockchainFSAddressFlag) {
+		fmt.Println("Address %s is not valid", *createBlockchainFSAddressFlag)
+		return
+	}
 
-	bc, err := blockchain.NewBlockchain(*createBlockchainDBAddress)
+	bc, err := blockchain.NewBlockchain(*createBlockchainDBAddress, []byte(*createBlockchainFSAddressFlag))
 	panicOnError(err)
 	defer bc.Finalize()
 
@@ -203,7 +273,7 @@ func (cli *CLIAppplication) deleteCommand() {
 	if !checkFileExists(*deleteBlockchainDBAddress) {
 		return
 	}
-	if !checkIsDB(*deleteBlockchainDBAddress) {
+	if !checkIsExt(*deleteBlockchainDBAddress, ".db") {
 		fmt.Printf("%s is not a valid database\n", *deleteBlockchainDBAddress)
 		return
 	}

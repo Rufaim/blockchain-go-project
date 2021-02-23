@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	pb "github.com/Rufaim/blockchain/message"
+	"github.com/Rufaim/blockchain/wallet"
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
@@ -40,7 +41,7 @@ func serializeTransaction(tx *pb.Transaction) []byte {
 	return encoded
 }
 
-func newTxInput(id []byte, outid int, pubkey string) *pb.TXInput {
+func newTxInput(id []byte, outid int, pubkey, signature []byte) *pb.TXInput {
 	return &pb.TXInput{
 		Id:     id,
 		OutId:  int32(outid),
@@ -48,10 +49,11 @@ func newTxInput(id []byte, outid int, pubkey string) *pb.TXInput {
 	}
 }
 
-func newTxOutput(amount int, pubkey string) *pb.TXOutput {
+func newTxOutput(amount int, address []byte) *pb.TXOutput {
+	wi := wallet.GetAddressInfo(address)
 	return &pb.TXOutput{
-		Amount: int32(amount),
-		PubKey: pubkey,
+		Amount:     int32(amount),
+		PubKeyHash: wi.PublicKeyHash[:],
 	}
 }
 
@@ -71,23 +73,26 @@ func newTransaction(inps []*pb.TXInput, outs []*pb.TXOutput) *pb.Transaction {
 	return tx
 }
 
-func NewCoinbaseTX(to string) *pb.Transaction {
-	data := fmt.Sprintf("Reward to '%s'", to)
-
-	txin := newTxInput([]byte{}, -1, data)
+func NewCoinbaseTX(to []byte) *pb.Transaction {
+	txin := newTxInput([]byte{}, -1, []byte(genesisCoinbaseData), []byte{})
 	txout := newTxOutput(InitialMiningSubsidy, to)
 	tx := newTransaction([]*pb.TXInput{txin}, []*pb.TXOutput{txout})
 
 	return tx
 }
 
-func NewTransaction(from, to string, amount int, bc *Blockchain) (*pb.Transaction, error) {
+func NewTransaction(from, to []byte, amount int, bc *Blockchain, ws *wallet.WalletSet) (*pb.Transaction, error) {
 	acc, outputs, err := bc.FindSpendableAmountAndOutputs(from, amount)
 	if err != nil {
 		return nil, err
 	}
 	if acc < amount {
 		return nil, ErrorNotEnoughBalance
+	}
+
+	wfrom, err := ws.GetWalletByAddress(string(from))
+	if err != nil {
+		return nil, err
 	}
 
 	var (
@@ -102,7 +107,7 @@ func NewTransaction(from, to string, amount int, bc *Blockchain) (*pb.Transactio
 		}
 
 		for _, out := range outs {
-			in := newTxInput(txID, out, from)
+			in := newTxInput(txID, out, wfrom.PublicKey, []byte{})
 			txInputs = append(txInputs, in)
 		}
 	}

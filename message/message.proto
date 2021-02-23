@@ -9,12 +9,13 @@ message Void {}
 message TXInput {
     bytes id = 1;
     int32 outId = 2;
-    string pubKey = 3;
+    bytes pubKey = 3;
+    bytes signature = 4;
 }
 
 message TXOutput {
     int32 amount = 1;
-    string pubKey = 2;
+    bytes pubKeyHash = 2;
 }
 
 message Transaction {

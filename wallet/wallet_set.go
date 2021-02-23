@@ -77,10 +77,7 @@ func (ws *WalletSet) GetWalletByAddress(address string) (*Wallet, error) {
 	return w, nil
 }
 
-func NewWalletSet(filename string) (*WalletSet, error) {
+func NewWalletSet() *WalletSet {
 	ws := WalletSet(make(map[string]*Wallet))
-
-	err := ws.LoadFromFile(filename)
-
-	return &ws, err
+	return &ws
 }

@@ -3,6 +3,8 @@ package cli
 import (
 	"os"
 	"strings"
+
+	"github.com/Rufaim/blockchain/wallet"
 )
 
 func checkFileExists(path string) bool {
@@ -14,7 +16,7 @@ func checkFileExists(path string) bool {
 }
 
 func removeDBFile(path string) bool {
-	if !checkIsDB(path) {
+	if !checkIsExt(path, ".db") {
 		return false
 	}
 
@@ -22,11 +24,15 @@ func removeDBFile(path string) bool {
 	return !checkFileExists(path)
 }
 
-func checkIsDB(path string) bool {
-	if strings.HasSuffix(path, ".db") {
+func checkIsExt(path, suffix string) bool {
+	if strings.HasSuffix(path, suffix) {
 		return true
 	}
 	return false
+}
+
+func checkWalletAddress(addr string) bool {
+	return wallet.IsValidAddress([]byte(addr))
 }
 
 func panicOnError(err error) {

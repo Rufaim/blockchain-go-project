@@ -20,8 +20,7 @@ func init() {
 const (
 	blocksBucketName    = "blocks"
 	keyTopBlockHash     = "top"
-	genesisCoinbaseData = "TestUser"
-	// genesisCoinbaseData = "The Times 03/Jan/2009 Chancellor on brink of second bailout for banks"
+	genesisCoinbaseData = "The Times 27/Jul/2020 Chancellor on brink of second bailout for banks"
 )
 
 const InitialMiningSubsidy = 10

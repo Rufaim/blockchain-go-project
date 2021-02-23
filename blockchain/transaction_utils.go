@@ -1,17 +1,19 @@
 package blockchain
 
 import (
-	"strings"
+	"bytes"
 
 	pb "github.com/Rufaim/blockchain/message"
+	"github.com/Rufaim/blockchain/wallet"
 )
 
-func InputUsesKey(input *pb.TXInput, pubKey string) bool {
-	return strings.Compare(input.PubKey, pubKey) == 0
+func InputUsesKey(input *pb.TXInput, pubKeyHash []byte) bool {
+	inputKeyHash := wallet.HashPubKey(input.PubKey)
+	return bytes.Compare(inputKeyHash, pubKeyHash) == 0
 }
 
-func OutputIsLockedWithKey(output *pb.TXOutput, pubKey string) bool {
-	return strings.Compare(output.PubKey, pubKey) == 0
+func OutputIsLockedWithKey(output *pb.TXOutput, pubKeyHash []byte) bool {
+	return bytes.Compare(output.PubKeyHash, pubKeyHash) == 0
 }
 
 func isTransactionCoinbase(tx *pb.Transaction) bool {

@@ -1,13 +1,21 @@
 package cli
 
 const (
-	defaultDbPath = "blockchain.db"
-	DBAddressFlag = "path"
+	defaultDbPath        = "blockchain.db"
+	defaultWalletSetPath = "wallet_set.ws"
+	DBAddressFlag        = "dbpath"
+	WSAddressFlag        = "wspath"
 )
 
 //// show command
 const (
 	showBlockchainCommand = "show"
+)
+
+//// wallet
+const (
+	walletOperationsCommand        = "wallet"
+	walletOperationsCommandNewFlag = "new"
 )
 
 //// balance command
@@ -28,6 +36,7 @@ const (
 const (
 	createBlockchainCommand                  = "create"
 	createBlockchainCommandForceRecreateFlag = "f"
+	createBlockchainCommandAddressFlag       = "address"
 )
 
 //// delete command
