@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"bytes"
+	"crypto/ecdsa"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -71,6 +72,12 @@ func newTransaction(inps []*pb.TXInput, outs []*pb.TXOutput) *pb.Transaction {
 
 	tx.Id = hash[:]
 	return tx
+}
+
+func SignTransaction(privateKey ecdsa.PrivateKey, tx *pb.Transaction) {
+	if isTransactionCoinbase(tx) {
+		return
+	}
 }
 
 func NewCoinbaseTX(to []byte) *pb.Transaction {

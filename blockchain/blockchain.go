@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"bytes"
 	"encoding/hex"
 	"time"
 
@@ -96,6 +97,61 @@ func (bc *Blockchain) Iterator() *BlockchainIterator {
 		currentHash: bc.currentTop.Hash,
 		db:          bc.db,
 	}
+}
+
+//FindTransactionsByID search for a set of transactions in the Blockchain
+// returns ErrorTransactionsNotFound is even one transaction id does not exist
+func (bc *Blockchain) FindTransactionsByID(IDs [][]byte) ([]*pb.Transaction, error) {
+	bci := bc.Iterator()
+	type boolID struct {
+		isFound bool
+		id      []byte
+	}
+	boolMapper := make([]*boolID, 0, len(IDs))
+	for _, id := range IDs {
+		boolMapper = append(boolMapper, &boolID{false, id})
+	}
+	result := make([]*pb.Transaction, 0, len(IDs))
+
+	for {
+
+		block, err := bci.Next()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, tx := range block.Transactions {
+			for _, mid := range boolMapper {
+				if !mid.isFound {
+					if bytes.Compare(tx.Id, mid.id) == 0 {
+						result = append(result, tx)
+						mid.isFound = true
+					}
+				}
+			}
+		}
+
+		if block.IsGenesis() {
+			break
+		}
+
+		stopKey := true
+		for _, mid := range boolMapper {
+			if !mid.isFound {
+				stopKey = false
+				break
+			}
+		}
+		if stopKey {
+			return result, nil
+		}
+	}
+	for _, mid := range boolMapper {
+		if !mid.isFound {
+			return nil, ErrorTransactionsNotFound
+		}
+	}
+	return result, nil
 }
 
 //FindUnspentTransactions returns a set of transaction that have not been closed.
