@@ -3,9 +3,12 @@ package blockchain
 import (
 	"bytes"
 	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 
 	pb "github.com/Rufaim/blockchain/message"
 	"github.com/Rufaim/blockchain/wallet"
@@ -27,57 +30,82 @@ func HashTransactions(txs []*pb.Transaction) []byte {
 	return hash[:]
 }
 
-func hashTransaction(tx *pb.Transaction) []byte {
-	hash := sha256.Sum256(serializeTransaction(tx))
-	return hash[:]
-}
-
-//Serialize returns a byte version of transaction
-func serializeTransaction(tx *pb.Transaction) []byte {
-	encoded, err := proto.Marshal(tx)
-	if err != nil {
-		panic(err)
-	}
-
-	return encoded
-}
-
-func newTxInput(id []byte, outid int, pubkey, signature []byte) *pb.TXInput {
-	return &pb.TXInput{
-		Id:     id,
-		OutId:  int32(outid),
-		PubKey: pubkey,
-	}
-}
-
-func newTxOutput(amount int, address []byte) *pb.TXOutput {
-	wi := wallet.GetAddressInfo(address)
-	return &pb.TXOutput{
-		Amount:     int32(amount),
-		PubKeyHash: wi.PublicKeyHash[:],
-	}
-}
-
 func newTransaction(inps []*pb.TXInput, outs []*pb.TXOutput) *pb.Transaction {
 	tx := &pb.Transaction{
 		Inps: inps,
 		Outs: outs,
 	}
 
-	encodedData, err := proto.Marshal(tx)
-	if err != nil {
-		panic(err)
-	}
-	hash := sha256.Sum256(encodedData)
-
-	tx.Id = hash[:]
+	tx.Id = hashTransaction(tx)
 	return tx
 }
 
-func SignTransaction(privateKey ecdsa.PrivateKey, tx *pb.Transaction) {
+func SignTransactionWithWallet(tx *pb.Transaction, w *wallet.Wallet, refTxs map[string]*pb.Transaction) error {
 	if isTransactionCoinbase(tx) {
-		return
+		return nil
 	}
+
+	txCopy, ok := proto.Clone(tx).(*pb.Transaction)
+	if !ok {
+		return ErrorTransactionCopyFailed
+	}
+
+	for i := range tx.Inps {
+		txCopy.Inps[i].Signature = nil
+		txCopy.Inps[i].PubKey = nil
+	}
+
+	for i, inp := range tx.Inps {
+		txCopy.Inps[i].PubKey = refTxs[hex.EncodeToString(inp.Id)].Outs[int(inp.OutId)].PubKeyHash
+		txCopy.Id = hashTransaction(txCopy)
+
+		r, s, err := ecdsa.Sign(rand.Reader, &w.PrivateKey, txCopy.Id)
+		if err != nil {
+			return err
+		}
+
+		tx.Inps[i].Signature = append(r.Bytes(), s.Bytes()...)
+	}
+
+	return nil
+}
+
+func VerifyTransaction(tx *pb.Transaction, refTxs map[string]*pb.Transaction) (bool, error) {
+	if isTransactionCoinbase(tx) {
+		return true, nil
+	}
+
+	txCopy, ok := proto.Clone(tx).(*pb.Transaction)
+	if !ok {
+		return false, ErrorTransactionCopyFailed
+	}
+	for i := range tx.Inps {
+		txCopy.Inps[i].Signature = nil
+		txCopy.Inps[i].PubKey = nil
+	}
+
+	curve := elliptic.P256()
+
+	for i, inp := range tx.Inps {
+		lenHalf := len(inp.PubKey) / 2
+		x := new(big.Int).SetBytes(inp.PubKey[:lenHalf])
+		y := new(big.Int).SetBytes(inp.PubKey[lenHalf:])
+		recPubKey := ecdsa.PublicKey{curve, x, y}
+
+		lenHalf = len(inp.Signature) / 2
+		r := new(big.Int).SetBytes(inp.Signature[:lenHalf])
+		s := new(big.Int).SetBytes(inp.Signature[lenHalf:])
+
+		txCopy.Inps[i].Signature = nil
+		txCopy.Inps[i].PubKey = refTxs[hex.EncodeToString(inp.Id)].Outs[int(inp.OutId)].PubKeyHash
+		txCopy.Id = hashTransaction(txCopy)
+
+		if !ecdsa.Verify(&recPubKey, txCopy.Id, r, s) {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 func NewCoinbaseTX(to []byte) *pb.Transaction {
@@ -124,5 +152,6 @@ func NewTransaction(from, to []byte, amount int, bc *Blockchain, ws *wallet.Wall
 		txOutputs = append(txOutputs, newTxOutput(acc-amount, from)) // balance change for sender
 	}
 	transaction := newTransaction(txInputs, txOutputs)
-	return transaction, nil
+	err = bc.SignTransaction(transaction, wfrom)
+	return transaction, err
 }

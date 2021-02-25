@@ -23,6 +23,17 @@ func (bc *Blockchain) MineBlock(transactions []*pb.Transaction) ([]byte, error) 
 	if len(bc.currentTop.Hash) == 0 {
 		bc.currentTop.setHash()
 	}
+
+	for _, tx := range transactions {
+		vres, err := bc.VerifyTransaction(tx)
+		if err != nil {
+			panic(err)
+		}
+		if !vres {
+			panic(ErrorInvalidTransaction)
+		}
+	}
+
 	newBlock := newBlock(transactions, bc.currentTop.Hash)
 
 	err := bc.db.Update(func(tx *bolt.Tx) error {
@@ -101,7 +112,7 @@ func (bc *Blockchain) Iterator() *BlockchainIterator {
 
 //FindTransactionsByID search for a set of transactions in the Blockchain
 // returns ErrorTransactionsNotFound is even one transaction id does not exist
-func (bc *Blockchain) FindTransactionsByID(IDs [][]byte) ([]*pb.Transaction, error) {
+func (bc *Blockchain) FindTransactionsByID(IDs [][]byte) (map[string]*pb.Transaction, error) {
 	bci := bc.Iterator()
 	type boolID struct {
 		isFound bool
@@ -111,10 +122,9 @@ func (bc *Blockchain) FindTransactionsByID(IDs [][]byte) ([]*pb.Transaction, err
 	for _, id := range IDs {
 		boolMapper = append(boolMapper, &boolID{false, id})
 	}
-	result := make([]*pb.Transaction, 0, len(IDs))
+	result := make(map[string]*pb.Transaction, len(IDs))
 
 	for {
-
 		block, err := bci.Next()
 		if err != nil {
 			return nil, err
@@ -124,15 +134,11 @@ func (bc *Blockchain) FindTransactionsByID(IDs [][]byte) ([]*pb.Transaction, err
 			for _, mid := range boolMapper {
 				if !mid.isFound {
 					if bytes.Compare(tx.Id, mid.id) == 0 {
-						result = append(result, tx)
+						result[hex.EncodeToString(tx.Id)] = tx
 						mid.isFound = true
 					}
 				}
 			}
-		}
-
-		if block.IsGenesis() {
-			break
 		}
 
 		stopKey := true
@@ -145,13 +151,33 @@ func (bc *Blockchain) FindTransactionsByID(IDs [][]byte) ([]*pb.Transaction, err
 		if stopKey {
 			return result, nil
 		}
-	}
-	for _, mid := range boolMapper {
-		if !mid.isFound {
-			return nil, ErrorTransactionsNotFound
+
+		if block.IsGenesis() {
+			break
 		}
 	}
-	return result, nil
+	return nil, ErrorTransactionsNotFound
+}
+
+func (bc *Blockchain) SignTransaction(tx *pb.Transaction, w *wallet.Wallet) error {
+	refTxIds := getAllNonCoinbaseIds(tx)
+	refTXs, err := bc.FindTransactionsByID(refTxIds)
+
+	if err != nil {
+		return err
+	}
+
+	return SignTransactionWithWallet(tx, w, refTXs)
+}
+
+func (bc *Blockchain) VerifyTransaction(tx *pb.Transaction) (bool, error) {
+	refTxIds := getAllNonCoinbaseIds(tx)
+	refTXs, err := bc.FindTransactionsByID(refTxIds)
+	if err != nil {
+		return false, err
+	}
+
+	return VerifyTransaction(tx, refTXs)
 }
 
 //FindUnspentTransactions returns a set of transaction that have not been closed.

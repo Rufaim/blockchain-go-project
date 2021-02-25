@@ -26,6 +26,8 @@ const (
 const InitialMiningSubsidy = 10
 
 var (
-	ErrorNotEnoughBalance     = errors.New("Not enougth balance for transaction")
-	ErrorTransactionsNotFound = errors.New("Transactions are not found")
+	ErrorNotEnoughBalance      = errors.New("Not enougth balance for transaction")
+	ErrorTransactionsNotFound  = errors.New("Transactions are not found")
+	ErrorInvalidTransaction    = errors.New("Transactions is invalid")
+	ErrorTransactionCopyFailed = errors.New("Transactions if failed to copy")
 )
