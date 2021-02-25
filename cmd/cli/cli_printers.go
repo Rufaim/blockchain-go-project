@@ -20,7 +20,7 @@ func (*CLIAppplication) printUsage() {
 		sendCoinsCommand, sendCoinsCommandFromFlag, sendCoinsCommandToFlag, sendCoinsCommandAmountFlag, WSAddressFlag, DBAddressFlag)
 	fmt.Printf("%s %s [-%s dbpath] -- prints the blockchain from the last to genesis\n", os.Args[0],
 		showBlockchainCommand, DBAddressFlag)
-	fmt.Printf("%s %s -%s [-%s] [-%s dbpath] -- creates new blockhain\n", os.Args[0],
+	fmt.Printf("%s %s -%s address [-%s] [-%s dbpath] -- creates new blockhain\n", os.Args[0],
 		createBlockchainCommand, createBlockchainCommandAddressFlag, createBlockchainCommandForceRecreateFlag, DBAddressFlag)
 	fmt.Printf("%s %s [-%s dbpath] -- deletes given blockchain\n", os.Args[0],
 		deleteBlockchainCommand, DBAddressFlag)
@@ -44,15 +44,17 @@ func (*CLIAppplication) printChain(address, dbPath string) {
 		fmt.Printf("PoW: %s\n", strconv.FormatBool(block.Validate()))
 		fmt.Println("Transactions:")
 		for _, tx := range block.Transactions {
-			fmt.Println("\tInputs:")
+			fmt.Printf("\tTransaction (%s):\n", string(base58.Base58Encode(tx.Id)))
+			fmt.Println("\t\tInputs:")
 			for _, in := range tx.Inps {
 				hash := string(base58.Base58Encode(wallet.HashPubKey(in.PubKey)))
-				fmt.Printf("\t\tOutID: %d; PubKeyHash: %s\n", in.OutId, hash)
+				txId := string(base58.Base58Encode(in.Id))
+				fmt.Printf("\t\t\tID: %s; OutID: %d; PubKeyHash: %s\n", txId, in.OutId, hash)
 			}
-			fmt.Println("\tOutputs:")
+			fmt.Println("\t\tOutputs:")
 			for _, out := range tx.Outs {
 				hash := string(base58.Base58Encode(out.PubKeyHash))
-				fmt.Printf("\t\tAmount: %d; PubKeyHash: %s\n", out.Amount, hash)
+				fmt.Printf("\t\t\tAmount: %d; PubKeyHash: %s\n", out.Amount, hash)
 			}
 		}
 
