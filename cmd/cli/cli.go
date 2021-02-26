@@ -215,7 +215,8 @@ func (cli *CLIAppplication) sendCoinsCommand() {
 	tx, err := blockchain.NewTransaction([]byte(*sendCoinsCommandFSFromFlag),
 		[]byte(*sendCoinsCommandFSToFlag), *sendCoinsCommandFSAmountFlag, bc, ws)
 	panicOnError(err)
-	hash, err := bc.MineBlock([]*pb.Transaction{tx})
+	cbtx := blockchain.NewCoinbaseTX([]byte(*sendCoinsCommandFSFromFlag))
+	hash, err := bc.MineBlock([]*pb.Transaction{tx, cbtx})
 	panicOnError(err)
 	fmt.Printf("Block mined, hash: %x\n", hash)
 }

@@ -60,5 +60,5 @@ func serializeTransaction(tx *pb.Transaction) []byte {
 }
 
 func isTransactionCoinbase(tx *pb.Transaction) bool {
-	return len(tx.Inps) == 1 && len(tx.Outs) == 0 && tx.Inps[0].OutId == -1
+	return len(tx.Inps) == 1 && len(tx.Inps[0].Id) == 0 && tx.Inps[0].OutId == -1
 }
