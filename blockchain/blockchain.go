@@ -30,7 +30,7 @@ func (bc *Blockchain) MineBlock(transactions []*pb.Transaction) ([]byte, error) 
 			panic(err)
 		}
 		if !vres {
-			panic(ErrorInvalidTransaction)
+			return nil, ErrorInvalidTransaction
 		}
 	}
 
