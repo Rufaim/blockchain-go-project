@@ -13,7 +13,7 @@ import (
 func prepareData(b *block, numTargetBits int) []byte {
 	blockDataBytes := [][]byte{
 		b.PrevHash,
-		HashTransactions(b.Transactions),
+		hashTransactions(b.Transactions),
 		intToBytes(b.Timestamp, 16),
 		intToBytes(int64(numTargetBits), 16),
 	}

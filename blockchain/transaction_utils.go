@@ -45,6 +45,24 @@ func getAllNonCoinbaseIds(tx *pb.Transaction) [][]byte {
 	return refTxIds
 }
 
+//hashTransactions returns a hash of a transaction slice
+//it does not verify transactions or its hash
+//assuming id is a valid hash been taken during transaction creation
+func hashTransactions(txs []*pb.Transaction) []byte {
+	var (
+		txHashes [][]byte
+		hash     [sha256.Size]byte
+	)
+
+	for _, tx := range txs {
+		txHashes = append(txHashes, tx.Id)
+	}
+	hash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
+	return hash[:]
+}
+
+//hashTransactions returns a hash of a transaction
+//it is used in transaction creation
 func hashTransaction(tx *pb.Transaction) []byte {
 	hash := sha256.Sum256(serializeTransaction(tx))
 	return hash[:]

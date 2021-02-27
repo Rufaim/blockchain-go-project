@@ -1,11 +1,9 @@
 package blockchain
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"math/big"
@@ -15,20 +13,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
-
-//HashTransactions returns a hash of a transaction slice
-func HashTransactions(txs []*pb.Transaction) []byte {
-	var (
-		txHashes [][]byte
-		hash     [sha256.Size]byte
-	)
-
-	for _, tx := range txs {
-		txHashes = append(txHashes, tx.Id)
-	}
-	hash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
-	return hash[:]
-}
 
 func newTransaction(inps []*pb.TXInput, outs []*pb.TXOutput) *pb.Transaction {
 	tx := &pb.Transaction{
