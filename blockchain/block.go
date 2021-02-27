@@ -1,9 +1,9 @@
 package blockchain
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"math"
-	"math/big"
 	"time"
 
 	pb "github.com/Rufaim/blockchain/message"
@@ -16,16 +16,17 @@ type block struct {
 
 func (b *block) setHash() {
 	//TODO: make mining more explicit
-	var hashInt big.Int
-	var hash [sha256.Size]byte
+	var (
+		hash  [sha256.Size]byte
+		nonce uint64
+	)
 
-	var nonce uint64
+	data := prepareData(b, hashTargetBits)
 	for nonce < math.MaxUint64 {
-		data := prepareData(b, nonce)
-		hash = sha256.Sum256(data)
-		hashInt.SetBytes(hash[:])
+		dataWithNonce := appendNonceToData(data, nonce)
+		hash = sha256.Sum256(dataWithNonce)
 
-		if hashInt.Cmp(hashTargetValue) < 0 {
+		if isHashValid(hash[:]) {
 			break
 		}
 		nonce++
@@ -42,15 +43,19 @@ func (b *block) IsGenesis() bool {
 
 //Validate returns true if block hash is valid in terms of Proof of Work
 func (b *block) Validate() bool {
-	var hashInt big.Int
+	return b.validateWithNumTargetBits(hashTargetBits)
+}
 
-	data := prepareData(b, b.Nonce)
-	hash := sha256.Sum256(data)
-	hashInt.SetBytes(hash[:])
+func (b *block) validateWithNumTargetBits(numTargetBits int) bool {
+	data := prepareData(b, numTargetBits)
+	dataWithNonce := appendNonceToData(data, b.Nonce)
+	hash := sha256.Sum256(dataWithNonce)
 
-	isValid := hashInt.Cmp(hashTargetValue) == -1
+	if bytes.Compare(hash[:], b.Hash) != 0 {
+		return false
+	}
 
-	return isValid
+	return isHashValid(hash[:])
 }
 
 //Serialize returs a representation of a block as a byte array
