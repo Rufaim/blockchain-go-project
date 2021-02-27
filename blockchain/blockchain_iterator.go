@@ -2,6 +2,21 @@ package blockchain
 
 import "github.com/boltdb/bolt"
 
+//Unified interface for blockchain iterators
+type BlockchainIterable interface {
+	Next() (*block, error)
+}
+
+//BlockchainIterator is a top to genesis iterator over a blockchain
+//Usage:
+//bci := <iterator construction>
+//for {
+//		block, err := bci.Next()
+//		if err != nil {
+//			return nil, err
+//		}
+//		...
+//}
 type BlockchainIterator struct {
 	currentHash []byte
 	db          *bolt.DB

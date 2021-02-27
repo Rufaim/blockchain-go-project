@@ -103,7 +103,7 @@ func (bc *Blockchain) Finalize() error {
 	return bc.db.Close()
 }
 
-func (bc *Blockchain) Iterator() *BlockchainIterator {
+func (bc *Blockchain) Iterator() BlockchainIterable {
 	return &BlockchainIterator{
 		currentHash: bc.currentTop.Hash,
 		db:          bc.db,
@@ -182,8 +182,13 @@ func (bc *Blockchain) VerifyTransaction(tx *pb.Transaction) (bool, error) {
 
 //FindUnspentTransactions returns a set of transaction that have not been closed.
 func (bc *Blockchain) FindUnspentTransactions(address []byte) ([]*pb.Transaction, error) {
+	type spent struct {
+		idx       int
+		accounted bool
+	}
+
 	var unspentTXs []*pb.Transaction
-	spentTXOs := make(map[string][]int)
+	spentTXOs := make(map[string][]*spent)
 	bci := bc.Iterator()
 	wi := wallet.GetAddressInfo(address)
 
@@ -201,7 +206,8 @@ func (bc *Blockchain) FindUnspentTransactions(address []byte) ([]*pb.Transaction
 				// If output is not spent ...
 				if spentTXOs[txID] != nil {
 					for _, spentOut := range spentTXOs[txID] {
-						if spentOut == outIdx {
+						if !spentOut.accounted && spentOut.idx == outIdx {
+							spentOut.accounted = true
 							continue Outputs
 						}
 					}
@@ -218,7 +224,7 @@ func (bc *Blockchain) FindUnspentTransactions(address []byte) ([]*pb.Transaction
 					if InputUsesKey(in, wi.PublicKeyHash) {
 						// remember, id of the input is an id of transaction whose output it closes
 						inTxID := hex.EncodeToString(in.Id)
-						spentTXOs[inTxID] = append(spentTXOs[inTxID], int(in.OutId))
+						spentTXOs[inTxID] = append(spentTXOs[inTxID], &spent{idx: int(in.OutId)})
 					}
 				}
 			}
