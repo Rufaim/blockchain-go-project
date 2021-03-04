@@ -6,7 +6,7 @@ import (
 
 	pb "github.com/Rufaim/blockchain/message"
 	"github.com/Rufaim/blockchain/wallet"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 func newTxInput(id []byte, outid int, pubkey, signature []byte) *pb.TXInput {

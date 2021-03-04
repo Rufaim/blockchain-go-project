@@ -10,8 +10,8 @@ import (
 
 	pb "github.com/Rufaim/blockchain/message"
 	"github.com/Rufaim/blockchain/wallet"
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 )
 
 func newTransaction(inps []*pb.TXInput, outs []*pb.TXOutput) *pb.Transaction {

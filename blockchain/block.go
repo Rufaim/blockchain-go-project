@@ -6,8 +6,9 @@ import (
 	"math"
 	"time"
 
+	"google.golang.org/protobuf/proto"
+
 	pb "github.com/Rufaim/blockchain/message"
-	"github.com/golang/protobuf/proto"
 )
 
 type block struct {

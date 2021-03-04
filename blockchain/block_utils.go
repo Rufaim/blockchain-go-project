@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	pb "github.com/Rufaim/blockchain/message"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 func prepareData(b *block, numTargetBits int) []byte {
