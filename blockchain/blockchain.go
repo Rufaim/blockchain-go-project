@@ -160,7 +160,10 @@ func (bc *Blockchain) FindTransactionsByID(IDs [][]byte) (map[string]*pb.Transac
 }
 
 func (bc *Blockchain) SignTransaction(tx *pb.Transaction, w *wallet.Wallet) error {
-	refTxIds := getAllNonCoinbaseIds(tx)
+	if isTransactionCoinbase(tx) {
+		return nil
+	}
+	refTxIds := getAllTransactionInputsIds(tx)
 	refTXs, err := bc.FindTransactionsByID(refTxIds)
 
 	if err != nil {
@@ -171,7 +174,10 @@ func (bc *Blockchain) SignTransaction(tx *pb.Transaction, w *wallet.Wallet) erro
 }
 
 func (bc *Blockchain) VerifyTransaction(tx *pb.Transaction) (bool, error) {
-	refTxIds := getAllNonCoinbaseIds(tx)
+	if isTransactionCoinbase(tx) {
+		return true, nil
+	}
+	refTxIds := getAllTransactionInputsIds(tx)
 	refTXs, err := bc.FindTransactionsByID(refTxIds)
 	if err != nil {
 		return false, err

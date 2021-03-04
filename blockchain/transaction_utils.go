@@ -9,7 +9,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func newTxInput(id []byte, outid int, pubkey, signature []byte) *pb.TXInput {
+func newTxInput(id []byte, outid int, pubkey []byte) *pb.TXInput {
 	return &pb.TXInput{
 		Id:     id,
 		OutId:  int32(outid),
@@ -34,13 +34,11 @@ func OutputIsLockedWithKey(output *pb.TXOutput, pubKeyHash []byte) bool {
 	return bytes.Compare(output.PubKeyHash, pubKeyHash) == 0
 }
 
-func getAllNonCoinbaseIds(tx *pb.Transaction) [][]byte {
+func getAllTransactionInputsIds(tx *pb.Transaction) [][]byte {
 	refTxIds := make([][]byte, 0, len(tx.Inps))
 
 	for _, in := range tx.Inps {
-		if in.OutId != -1 {
-			refTxIds = append(refTxIds, in.Id)
-		}
+		refTxIds = append(refTxIds, in.Id)
 	}
 	return refTxIds
 }

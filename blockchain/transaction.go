@@ -93,7 +93,7 @@ func VerifyTransaction(tx *pb.Transaction, refTxs map[string]*pb.Transaction) (b
 }
 
 func NewCoinbaseTX(to []byte) *pb.Transaction {
-	txin := newTxInput([]byte{}, -1, []byte(genesisCoinbaseData), []byte{})
+	txin := newTxInput([]byte{}, -1, []byte(genesisCoinbaseData))
 	txout := newTxOutput(InitialMiningSubsidy, to)
 	tx := newTransaction([]*pb.TXInput{txin}, []*pb.TXOutput{txout})
 
@@ -126,7 +126,7 @@ func NewTransaction(from, to []byte, amount int, bc *Blockchain, ws *wallet.Wall
 		}
 
 		for _, out := range outs {
-			in := newTxInput(txID, out, wfrom.PublicKey, []byte{})
+			in := newTxInput(txID, out, wfrom.PublicKey)
 			txInputs = append(txInputs, in)
 		}
 	}
