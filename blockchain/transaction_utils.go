@@ -78,3 +78,15 @@ func serializeTransaction(tx *pb.Transaction) []byte {
 func isTransactionCoinbase(tx *pb.Transaction) bool {
 	return len(tx.Inps) == 1 && len(tx.Inps[0].Id) == 0 && tx.Inps[0].OutId == -1
 }
+
+func trimCopyTransaction(tx *pb.Transaction) (*pb.Transaction, error) {
+	txCopy, ok := proto.Clone(tx).(*pb.Transaction)
+	if !ok {
+		return nil, ErrorTransactionCopyFailed
+	}
+	for i := range tx.Inps {
+		txCopy.Inps[i].Signature = nil
+		txCopy.Inps[i].PubKey = nil
+	}
+	return txCopy, nil
+}

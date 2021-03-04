@@ -11,7 +11,6 @@ import (
 	pb "github.com/Rufaim/blockchain/message"
 	"github.com/Rufaim/blockchain/wallet"
 	"github.com/pkg/errors"
-	"google.golang.org/protobuf/proto"
 )
 
 func newTransaction(inps []*pb.TXInput, outs []*pb.TXOutput) *pb.Transaction {
@@ -29,14 +28,9 @@ func SignTransactionWithWallet(tx *pb.Transaction, w *wallet.Wallet, refTxs map[
 		return nil
 	}
 
-	txCopy, ok := proto.Clone(tx).(*pb.Transaction)
-	if !ok {
-		return ErrorTransactionCopyFailed
-	}
-
-	for i := range tx.Inps {
-		txCopy.Inps[i].Signature = nil
-		txCopy.Inps[i].PubKey = nil
+	txCopy, err := trimCopyTransaction(tx)
+	if err != nil {
+		return err
 	}
 
 	for i, inp := range tx.Inps {
@@ -59,13 +53,9 @@ func VerifyTransaction(tx *pb.Transaction, refTxs map[string]*pb.Transaction) (b
 		return true, nil
 	}
 
-	txCopy, ok := proto.Clone(tx).(*pb.Transaction)
-	if !ok {
-		return false, ErrorTransactionCopyFailed
-	}
-	for i := range tx.Inps {
-		txCopy.Inps[i].Signature = nil
-		txCopy.Inps[i].PubKey = nil
+	txCopy, err := trimCopyTransaction(tx)
+	if err != nil {
+		return false, err
 	}
 
 	curve := elliptic.P256()
