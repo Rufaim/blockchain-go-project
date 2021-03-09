@@ -131,7 +131,7 @@ func (cli *CLIAppplication) balanceOfWalletCommand() {
 		return
 	}
 	if len(*balanceOfWalletFSOF) == 0 {
-		fmt.Printf("Username is not entered")
+		fmt.Println("Username is not entered")
 		return
 	}
 
