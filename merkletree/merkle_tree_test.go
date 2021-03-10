@@ -3,6 +3,7 @@
 package merkletree_test
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 	"testing"
@@ -28,6 +29,11 @@ func TestMerkleTree(t *testing.T) {
 			sgot := fmt.Sprintf("%x", got)
 			if strings.Compare(sgot, tt.want) != 0 {
 				t.Errorf("MerkleTreeHash() = %s, want %s", sgot, tt.want)
+			}
+
+			got_ := merkletree.MerkleTreeHash(tt.input)
+			if bytes.Compare(got, got_) != 0 {
+				t.Error("MerkleTreeHash() is stochastic")
 			}
 		})
 	}
