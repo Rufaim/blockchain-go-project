@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 
+	"github.com/Rufaim/blockchain/merkletree"
 	pb "github.com/Rufaim/blockchain/message"
 	"github.com/Rufaim/blockchain/wallet"
 	"google.golang.org/protobuf/proto"
@@ -47,16 +48,12 @@ func getAllTransactionInputsIds(tx *pb.Transaction) [][]byte {
 //it does not verify transactions or its hash
 //assuming id is a valid hash been taken during transaction creation
 func hashTransactions(txs []*pb.Transaction) []byte {
-	var (
-		txHashes [][]byte
-		hash     [sha256.Size]byte
-	)
-
+	var serializedTx [][]byte
 	for _, tx := range txs {
-		txHashes = append(txHashes, tx.Id)
+		serializedTx = append(serializedTx, serializeTransaction(tx))
 	}
-	hash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
-	return hash[:]
+
+	return merkletree.MerkleTreeHash(serializedTx)
 }
 
 //hashTransactions returns a hash of a transaction
