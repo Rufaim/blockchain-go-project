@@ -1,34 +1,17 @@
 package blockchain
 
 import (
-	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"math/big"
 
 	pb "github.com/Rufaim/blockchain/message"
 	"github.com/Rufaim/blockchain/wallet"
-	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
 )
-
-//HashTransactions returns a hash of a transaction slice
-func HashTransactions(txs []*pb.Transaction) []byte {
-	var (
-		txHashes [][]byte
-		hash     [sha256.Size]byte
-	)
-
-	for _, tx := range txs {
-		txHashes = append(txHashes, tx.Id)
-	}
-	hash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
-	return hash[:]
-}
 
 func newTransaction(inps []*pb.TXInput, outs []*pb.TXOutput) *pb.Transaction {
 	tx := &pb.Transaction{
@@ -45,14 +28,9 @@ func SignTransactionWithWallet(tx *pb.Transaction, w *wallet.Wallet, refTxs map[
 		return nil
 	}
 
-	txCopy, ok := proto.Clone(tx).(*pb.Transaction)
-	if !ok {
-		return ErrorTransactionCopyFailed
-	}
-
-	for i := range tx.Inps {
-		txCopy.Inps[i].Signature = nil
-		txCopy.Inps[i].PubKey = nil
+	txCopy, err := trimCopyTransaction(tx)
+	if err != nil {
+		return err
 	}
 
 	for i, inp := range tx.Inps {
@@ -75,13 +53,9 @@ func VerifyTransaction(tx *pb.Transaction, refTxs map[string]*pb.Transaction) (b
 		return true, nil
 	}
 
-	txCopy, ok := proto.Clone(tx).(*pb.Transaction)
-	if !ok {
-		return false, ErrorTransactionCopyFailed
-	}
-	for i := range tx.Inps {
-		txCopy.Inps[i].Signature = nil
-		txCopy.Inps[i].PubKey = nil
+	txCopy, err := trimCopyTransaction(tx)
+	if err != nil {
+		return false, err
 	}
 
 	curve := elliptic.P256()
@@ -109,7 +83,7 @@ func VerifyTransaction(tx *pb.Transaction, refTxs map[string]*pb.Transaction) (b
 }
 
 func NewCoinbaseTX(to []byte) *pb.Transaction {
-	txin := newTxInput([]byte{}, -1, []byte(genesisCoinbaseData), []byte{})
+	txin := newTxInput([]byte{}, -1, []byte(genesisCoinbaseData))
 	txout := newTxOutput(InitialMiningSubsidy, to)
 	tx := newTransaction([]*pb.TXInput{txin}, []*pb.TXOutput{txout})
 
@@ -142,7 +116,7 @@ func NewTransaction(from, to []byte, amount int, bc *Blockchain, ws *wallet.Wall
 		}
 
 		for _, out := range outs {
-			in := newTxInput(txID, out, wfrom.PublicKey, []byte{})
+			in := newTxInput(txID, out, wfrom.PublicKey)
 			txInputs = append(txInputs, in)
 		}
 	}

@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/Rufaim/blockchain/base58"
 	"github.com/Rufaim/blockchain/blockchain"
@@ -41,7 +40,7 @@ func (*CLIAppplication) printChain(address, dbPath string) {
 		}
 		fmt.Printf("Prev: %x\n", block.PrevHash)
 		fmt.Printf("Hash: %x\n", block.Hash)
-		fmt.Printf("PoW: %s\n", strconv.FormatBool(block.Validate()))
+		fmt.Printf("PoW: %t\n", block.Validate())
 		fmt.Println("Transactions:")
 		for _, tx := range block.Transactions {
 			fmt.Printf("\tTransaction (%s):\n", string(base58.Base58Encode(tx.Id)))

@@ -37,7 +37,7 @@ func newKeyPair() (*ecdsa.PrivateKey, []byte, error) {
 }
 
 func IsValidAddress(address []byte) bool {
-	if len(address) < AddressChecksumLen+2 {
+	if len(address) < AddressChecksumLen+1+PublicKeyHashSize {
 		return false
 	}
 	addrInfo := GetAddressInfo(address)
