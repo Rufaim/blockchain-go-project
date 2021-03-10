@@ -44,6 +44,9 @@ func NewMerkleTree(data [][]byte) MerkleTree {
 	}
 
 	for i := 0; i < int(math.Ceil(math.Log2(float64(len(data))))); i++ {
+		if len(nodes)%2 != 0 {
+			nodes = append(nodes, nodes[len(nodes)-1])
+		}
 		var newNodes []*MerkleNode
 		for j := 0; j < len(nodes); j += 2 {
 			node := NewMerkleNode(nodes[j], nodes[j+1])
